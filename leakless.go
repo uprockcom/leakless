@@ -104,8 +104,25 @@ func (l *Launcher) serve(uid string) string {
 
 var leaklessDir = filepath.Join(os.TempDir(), fmt.Sprintf("leakless-%s-%s", runtime.GOARCH, shared.Version))
 
+// customLeaklessBin holds a custom path to a pre-built leakless executable.
+// If set, GetLeaklessBin will use this path instead of extracting from embedded binaries.
+var customLeaklessBin string
+
+// SetCustomLeaklessBin sets a custom path for the leakless executable.
+// This is useful when bundling a pre-built and signed leakless binary with your application.
+func SetCustomLeaklessBin(path string) {
+	customLeaklessBin = path
+}
+
 // GetLeaklessBin returns the executable path of the guard, if it doesn't exists create one.
 func GetLeaklessBin() string {
+	// If a custom leakless binary path is set, use it
+	if customLeaklessBin != "" {
+		if utils.FileExists(customLeaklessBin) {
+			return customLeaklessBin
+		}
+	}
+
 	bin := filepath.Join(leaklessDir, "leakless")
 
 	if runtime.GOOS == "windows" {
