@@ -1,27 +1,16 @@
-//go:generate go run ./cmd/pack
-
 package leakless
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net"
-	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/ysmood/leakless/pkg/shared"
 	"github.com/ysmood/leakless/pkg/utils"
 )
-
-var leaklessBinaries = map[string]string{}
 
 // Launcher struct
 type Launcher struct {
@@ -102,55 +91,22 @@ func (l *Launcher) serve(uid string) string {
 	return srv.Addr().String()
 }
 
-var leaklessDir = filepath.Join(os.TempDir(), fmt.Sprintf("leakless-%s-%s", runtime.GOARCH, shared.Version))
+// leaklessBin holds the path to a pre-built leakless executable.
+var leaklessBin string
 
-// customLeaklessBin holds a custom path to a pre-built leakless executable.
-// If set, GetLeaklessBin will use this path instead of extracting from embedded binaries.
-var customLeaklessBin string
-
-// SetCustomLeaklessBin sets a custom path for the leakless executable.
-// This is useful when bundling a pre-built and signed leakless binary with your application.
-func SetCustomLeaklessBin(path string) {
-	customLeaklessBin = path
+// SetLeaklessBin sets the path for the leakless executable.
+func SetLeaklessBin(path string) {
+	leaklessBin = path
 }
 
-// GetLeaklessBin returns the executable path of the guard, if it doesn't exists create one.
+// GetLeaklessBin returns the executable path of the guard.
 func GetLeaklessBin() string {
-	// If a custom leakless binary path is set, use it
-	if customLeaklessBin != "" {
-		if utils.FileExists(customLeaklessBin) {
-			return customLeaklessBin
-		}
-	}
-
-	bin := filepath.Join(leaklessDir, "leakless")
-
-	if runtime.GOOS == "windows" {
-		bin += ".exe"
-	}
-
-	if !utils.FileExists(bin) {
-		name := utils.GetTarget().BinName()
-		raw, err := base64.StdEncoding.DecodeString(leaklessBinaries[name])
-		utils.E(err)
-		gr, err := gzip.NewReader(bytes.NewBuffer(raw))
-		utils.E(err)
-		data, err := ioutil.ReadAll(gr)
-		utils.E(err)
-		utils.E(gr.Close())
-
-		err = utils.OutputFile(bin, data, nil)
-		utils.E(err)
-		utils.E(os.Chmod(bin, 0755))
-	}
-
-	return bin
+	return leaklessBin
 }
 
 // Support returns true if the OS is supported by leakless.
 func Support() bool {
-	_, has := leaklessBinaries[utils.GetTarget().BinName()]
-	return has
+	return true
 }
 
 // LockPort uses a tcp port to create a mutex lock for cross-process locking.
